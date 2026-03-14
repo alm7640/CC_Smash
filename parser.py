@@ -280,32 +280,52 @@ def _parse_pdf(file_bytes: bytes, filename: str) -> pd.DataFrame:
             r"^(\d{2}/\d{2})\s+\d{2}/\d{2}\s+(.+?)\s+\d{4}\s+\d{4}\s+([\d,]+\.\d{2})\s*$",
             re.MULTILINE,
         )
-        for match in boa_pattern.finditer(full_text):
-            date_str, desc, amt_str = match.groups()
-            try:
-                month, day = map(int, date_str.split("/"))
-                # If transaction month is later in the year than the closing month,
-                # it belongs to the prior year (e.g. Dec txn in a Jan-closing statement)
-                year = closing_year - 1 if month > closing_month else closing_year
-                date = datetime(year, month, day)
-            except (ValueError, OverflowError):
-                continue
 
-            amt = _clean_amount(amt_str)
-            merchant_raw = desc.strip()
+        # Summary-page indicators: pages with these phrases are overview/totals pages,
+        # not transaction listing pages. Skip them to avoid pulling in summary rows.
+        _SUMMARY_PAGE_SIGNALS = re.compile(
+            r"(account\s+summary|statement\s+summary|previous\s+balance"
+            r"|new\s+balance|credit\s+limit|minimum\s+payment\s+due"
+            r"|opening/closing\s+date|payment\s+information)",
+            re.IGNORECASE,
+        )
 
-            if amt is None or amt <= 0:
-                continue
-            if _looks_like_payment(merchant_raw, amt):
-                continue
+        try:
+            with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+                pages_text = [page.extract_text() or "" for page in pdf.pages]
+        except Exception:
+            pages_text = [full_text]  # fallback: treat whole doc as one page
 
-            rows.append({
-                "date": date,
-                "raw_merchant": merchant_raw,
-                "merchant": normalize_merchant(merchant_raw),
-                "amount": amt,
-                "source_file": filename,
-            })
+        for page_text in pages_text:
+            if _SUMMARY_PAGE_SIGNALS.search(page_text):
+                continue  # skip summary/overview pages
+
+            for match in boa_pattern.finditer(page_text):
+                date_str, desc, amt_str = match.groups()
+                try:
+                    month, day = map(int, date_str.split("/"))
+                    # If transaction month is later in the year than the closing month,
+                    # it belongs to the prior year (e.g. Dec txn in a Jan-closing statement)
+                    year = closing_year - 1 if month > closing_month else closing_year
+                    date = datetime(year, month, day)
+                except (ValueError, OverflowError):
+                    continue
+
+                amt = _clean_amount(amt_str)
+                merchant_raw = desc.strip()
+
+                if amt is None or amt <= 0:
+                    continue
+                if _looks_like_payment(merchant_raw, amt):
+                    continue
+
+                rows.append({
+                    "date": date,
+                    "raw_merchant": merchant_raw,
+                    "merchant": normalize_merchant(merchant_raw),
+                    "amount": amt,
+                    "source_file": filename,
+                })
 
     return pd.DataFrame(rows) if rows else pd.DataFrame()
 
