@@ -89,7 +89,7 @@ for key in ["df", "summary", "top13", "recurring", "subscriptions", "yoy",
 # Header
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
-<div class="main-header"><h1>💳 Statement Analyzer</h1></div>
+<div class="main-header"><h1>💳 Statement Analyzer 22</h1></div>
 <div class="tagline">
     Upload your credit card statements and uncover what your spending is really telling you.<br>
     <strong>All your statements never leave your session — processed in memory, never stored on your device.</strong>

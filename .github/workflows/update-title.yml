@@ -1,5 +1,7 @@
 name: Update app page title with latest commit time
-
+permissions:
+  contents: write
+  actions: write
 on:
   push:
     branches: [main]
