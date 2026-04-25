@@ -1,6 +1,17 @@
-# 💳 Statement Analyzer
+---
+title: CC Smash
+emoji: 💳
+colorFrom: blue
+colorTo: purple
+sdk: gradio
+sdk_version: "4.44.0"
+app_file: app.py
+pinned: false
+---
 
-A Streamlit app that ingests credit card statements (PDF, CSV, XLS/XLSX, DOCX)
+# 💳 CC Smash — Statement Analyzer
+
+A Gradio app that ingests credit card statements (PDF, CSV, XLS/XLSX, DOCX)
 and surfaces spending intelligence you'd never catch manually.
 
 ## Features
@@ -13,57 +24,28 @@ and surfaces spending intelligence you'd never catch manually.
 | 📈 Year-over-Year | Spend changes across years (requires 2+ years) |
 | 🔍 AI Insights | LLM-powered narrative analysis (BYOK) |
 
-## Setup
+## Run locally
 
-### 1. Install dependencies
 ```bash
 pip install -r requirements.txt
+python app.py
 ```
 
-### 2. Run locally
-```bash
-streamlit run app.py
-```
+## Deploy
 
-### 3. Open in browser
-```
-http://localhost:8501
-```
-
-## Deploy to Streamlit Cloud (free)
-
-1. Push this folder to a GitHub repo
-2. Go to https://share.streamlit.io
-3. Connect your repo, set `app.py` as the main file
-4. Deploy — you get a shareable URL instantly
+Pushes to `main` are automatically synced to the HuggingFace Space via GitHub Actions.
+Requires a `HF_TOKEN` secret in the GitHub repo settings with write access to `alm7640/CC_Smash`.
 
 ## Privacy
 
 - Files are processed **entirely in memory** — never written to disk or any server
 - Your API key lives only in your browser session and is discarded when you close the tab
-- The AI Insights tab sends only **aggregated data** (merchant names + totals) to the LLM provider — no account numbers, card numbers, or personal details
+- The AI Insights tab sends only **aggregated data** (merchant names + totals) to the LLM provider — no account numbers, card numbers, or personal details are ever sent
 
 ## Supported Banks
 
-Any bank that exports in PDF, CSV, or XLS format is supported. Tested against common
-export formats from Chase, Bank of America, Citi, Capital One, American Express,
-Wells Fargo, and Discover.
-
-If your bank's export isn't parsing correctly, the CSV export format is the most
-reliable — most banks offer this under "Download transactions" in their portal.
-
-## File Structure
-
-```
-statement_analyzer/
-├── app.py              Main Streamlit application
-├── parser.py           File ingestion & normalization (PDF/CSV/XLS/DOCX)
-├── analyzer.py         Rules engine (Top 13, Recurring, Subscriptions, YoY)
-├── llm.py              Multi-provider AI calls (OpenAI / Gemini / Anthropic)
-├── merchant_map.py     Merchant alias normalization dictionary
-├── requirements.txt
-└── README.md
-```
+Any bank that exports PDF, CSV, or XLS is supported. Tested against Chase, Bank of America,
+Citi, Capital One, American Express, Wells Fargo, and Discover.
 
 ## Data Quality Tiers
 
