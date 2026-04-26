@@ -331,20 +331,22 @@ Upload your credit card statements and uncover what your spending is really tell
 """)
 
     with gr.Row():
-        with gr.Column(scale=3):
+        with gr.Column(scale=1):
             file_upload = gr.File(
                 file_count="multiple",
                 label="Upload Statements (PDF, CSV, XLS, XLSX, DOCX)",
                 file_types=[".pdf", ".csv", ".xls", ".xlsx", ".docx"],
+                height=120,
             )
         with gr.Column(scale=1):
-            gr.Markdown("""
-**Better results with more data**
-
-🟡 1 statement — basic insights only
-🟠 6 months — recurring detection
-🟢 12 months — full annual cost view
+            gr.HTML("""
+<div style="padding:0.5rem 0;">
+<strong>Better results with more data</strong><br><br>
+🟡 1 statement — basic insights only<br>
+🟠 6 months — recurring detection<br>
+🟢 12 months — full annual cost view<br>
 🔵 24+ months — Year-over-Year unlocked
+</div>
 """)
 
     with gr.Accordion("⚙️ Settings", open=False):
