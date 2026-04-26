@@ -16,6 +16,30 @@ from analyzer import (
 )
 from llm import get_ai_insights
 
+CUSTOM_CSS = """
+.stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 1.25rem; }
+.stat-card {
+    background: #f9fafb; border: 1px solid #e5e7eb;
+    border-radius: 10px; padding: 0.75rem 1rem;
+    flex: 1; min-width: 130px; text-align: center;
+}
+.stat-label { font-size: 0.75rem; color: #9ca3af; margin-bottom: 2px; }
+.stat-value { font-size: 1.3rem; font-weight: 600; color: #111827; }
+.quality-banner {
+    border-radius: 8px; padding: 0.75rem 1rem;
+    font-size: 0.9rem; margin-bottom: 1rem;
+}
+.section-note {
+    font-size: 0.8rem; color: #9ca3af;
+    font-style: italic; margin: 0 0 0.5rem;
+}
+.privacy-badge {
+    background: #f0fdf4; border: 1px solid #bbf7d0;
+    border-radius: 8px; padding: 0.5rem 0.85rem;
+    font-size: 0.8rem; color: #166534; margin-top: 0.5rem;
+}
+"""
+
 
 def _wrap_file(f):
     """Adapt a Gradio uploaded file to the .name / .read() interface combine_files expects."""
@@ -53,15 +77,15 @@ def _make_tempfile(text: str) -> str:
 def _no_results():
     none_df = gr.update(value=None, visible=False)
     return (
-        gr.update(visible=False),   # results_col
-        None, None, None,           # state: df, summary, llm_text
-        gr.update(value="", visible=False),  # warnings_md
-        "", "",                     # quality_md, stats_md
-        none_df, "",                # top13_table, top13_footer_md
-        none_df, "",                # recurring_table, recurring_footer_md
-        none_df, "",                # subs_table, subs_footer_md
-        "",                         # yoy_status_md
-        none_df, none_df,           # yoy_inc_table, yoy_dec_table
+        gr.update(visible=False),              # results_col
+        None, None, None,                      # state: df, summary, llm_text
+        gr.update(value="", visible=False),    # warnings_md
+        "", "",                                # quality_html, stats_html
+        none_df, "",                           # top13_table, top13_footer_md
+        none_df, "",                           # recurring_table, recurring_footer_md
+        none_df, "",                           # subs_table, subs_footer_md
+        "",                                    # yoy_status_md
+        none_df, none_df,                      # yoy_inc_table, yoy_dec_table
         gr.update(value=None, visible=False),  # download_file
     )
 
@@ -115,32 +139,56 @@ def run_analysis(files, debug_parse):
     has_yoy = summary["has_yoy"]
     years = summary["years_covered"]
 
-    # Quality banner
+    # Colored quality banner
     if months < 6:
-        quality = (
-            f"> 📊 **{months} month(s)** of data detected. "
+        bg, border = "#fef3c7", "#f59e0b"
+        msg = (
+            f"📊 <strong>{months} month(s)</strong> of data detected. "
             "Upload at least 6 months for recurring charge detection and 12+ for full annual cost analysis."
         )
     elif months < 12:
-        quality = (
-            f"> 📊 **{months} months** of data ({', '.join(str(y) for y in years)}). "
+        bg, border = "#fff7ed", "#f97316"
+        msg = (
+            f"📊 <strong>{months} months</strong> of data ({', '.join(str(y) for y in years)}). "
             "Upload 12+ months to see true annual costs. Upload 2+ years to unlock Year-over-Year."
         )
     elif not has_yoy:
-        quality = (
-            f"> 📊 **{months} months** of data. "
+        bg, border = "#eff6ff", "#3b82f6"
+        msg = (
+            f"📊 <strong>{months} months</strong> of data. "
             "Great for annual analysis! Upload statements from another year to unlock Year-over-Year."
         )
     else:
-        quality = f"> ✅ **{months} months across {len(years)} years** — full analysis unlocked including Year-over-Year!"
+        bg, border = "#f0fdf4", "#22c55e"
+        msg = (
+            f"✅ <strong>{months} months across {len(years)} years</strong> — "
+            "full analysis unlocked including Year-over-Year!"
+        )
+
+    quality_html = (
+        f'<div class="quality-banner" style="background:{bg};border-left:4px solid {border};">'
+        f"{msg}</div>"
+    )
 
     avg_month = summary["total_spent"] / max(months, 1)
-    stats = (
-        "| Total Spent | Transactions | Date Range | Months | Avg/Month |\n"
-        "|---|---|---|---|---|\n"
-        f"| **${summary['total_spent']:,.0f}** | **{summary['total_transactions']:,}** "
-        f"| {summary['date_range_start']} → {summary['date_range_end']} "
-        f"| **{months}** | **${avg_month:,.0f}** |"
+    stats_html = (
+        '<div class="stat-row" style="display:flex;gap:12px;flex-wrap:wrap;margin:0 0 1.25rem;">'
+        f'<div class="stat-card" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0.75rem 1rem;flex:1;min-width:130px;text-align:center;">'
+        f'<div class="stat-label" style="font-size:0.75rem;color:#9ca3af;margin-bottom:2px;">Total Spent</div>'
+        f'<div class="stat-value" style="font-size:1.3rem;font-weight:600;color:#111827;">${summary["total_spent"]:,.0f}</div></div>'
+        f'<div class="stat-card" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0.75rem 1rem;flex:1;min-width:130px;text-align:center;">'
+        f'<div class="stat-label" style="font-size:0.75rem;color:#9ca3af;margin-bottom:2px;">Transactions</div>'
+        f'<div class="stat-value" style="font-size:1.3rem;font-weight:600;color:#111827;">{summary["total_transactions"]:,}</div></div>'
+        f'<div class="stat-card" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0.75rem 1rem;flex:1;min-width:130px;text-align:center;">'
+        f'<div class="stat-label" style="font-size:0.75rem;color:#9ca3af;margin-bottom:2px;">Date Range</div>'
+        f'<div class="stat-value" style="font-size:0.85rem;font-weight:600;color:#111827;">{summary["date_range_start"]}<br>→ {summary["date_range_end"]}</div></div>'
+        f'<div class="stat-card" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0.75rem 1rem;flex:1;min-width:130px;text-align:center;">'
+        f'<div class="stat-label" style="font-size:0.75rem;color:#9ca3af;margin-bottom:2px;">Months</div>'
+        f'<div class="stat-value" style="font-size:1.3rem;font-weight:600;color:#111827;">{months}</div></div>'
+        f'<div class="stat-card" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0.75rem 1rem;flex:1;min-width:130px;text-align:center;">'
+        f'<div class="stat-label" style="font-size:0.75rem;color:#9ca3af;margin-bottom:2px;">Avg/Month</div>'
+        f'<div class="stat-value" style="font-size:1.3rem;font-weight:600;color:#111827;">${avg_month:,.0f}</div></div>'
+        '</div>'
     )
 
     # ── Top 13 ────────────────────────────────────────────────────────────────
@@ -246,8 +294,8 @@ def run_analysis(files, debug_parse):
         gr.update(visible=True),                              # results_col
         df, summary, llm_text,                                # state
         gr.update(value=warn_text, visible=bool(warn_text)),  # warnings_md
-        quality,                                              # quality_md
-        stats,                                                # stats_md
+        quality_html,                                         # quality_html
+        stats_html,                                           # stats_html
         top13_out,       top13_footer,                        # top13
         rec_out,         rec_footer,                          # recurring
         subs_out,        subs_footer,                         # subscriptions
@@ -260,14 +308,16 @@ def run_ai(llm_text, provider, api_key, depth):
     if not llm_text:
         return "> ❌ Please run analysis first.", gr.update(visible=False)
     if not api_key:
-        return "> ⚠️ Enter your API key above to use AI Insights.", gr.update(visible=False)
+        return "> ⚠️ Enter your API key in the AI Provider section above to use AI Insights.", gr.update(visible=False)
     result = get_ai_insights(data_summary=llm_text, provider=provider, api_key=api_key, depth=depth)
     return result, gr.update(value=_make_tempfile(result), visible=True)
 
 
 # ── UI ────────────────────────────────────────────────────────────────────────
 
-with gr.Blocks(title="CC Smash — Statement Analyzer", theme=gr.themes.Soft()) as demo:
+_SECTION_NOTE = '<div style="font-size:0.8rem;color:#9ca3af;font-style:italic;margin:0 0 0.5rem;">{}</div>'
+
+with gr.Blocks(title="CC Smash — Statement Analyzer", theme=gr.themes.Soft(), css=CUSTOM_CSS) as demo:
 
     st_df = gr.State(None)
     st_summary = gr.State(None)
@@ -300,42 +350,57 @@ Upload your credit card statements and uncover what your spending is really tell
     with gr.Accordion("⚙️ Settings", open=False):
         debug_check = gr.Checkbox(label="Show raw parsed text for failed uploads (debug)")
 
+    with gr.Accordion("🤖 AI Provider", open=True):
+        gr.HTML(_SECTION_NOTE.format(
+            "Required only for the AI Insights tab — choose your provider and paste your API key."
+        ))
+        with gr.Row():
+            provider_dd = gr.Dropdown(
+                choices=["OpenAI (GPT-4o)", "Google Gemini", "Anthropic Claude"],
+                value="Anthropic Claude",
+                label="AI Provider",
+            )
+            api_key_tb = gr.Textbox(
+                type="password",
+                label="API Key",
+                placeholder="Paste your key here...",
+                info="Used only this session. Never stored or shared.",
+            )
+
     analyze_btn = gr.Button("🔍 Analyze Statements", variant="primary", size="lg")
 
     warnings_md = gr.Markdown(visible=False)
 
     with gr.Column(visible=False) as results_col:
-        quality_md = gr.Markdown()
-        stats_md = gr.Markdown()
+        quality_html = gr.HTML()
+        stats_html = gr.HTML()
 
         with gr.Tabs():
 
             with gr.Tab("💰 Top 13"):
                 gr.Markdown("#### 💰 Top 13 Most Expensive Single Purchases")
-                gr.Markdown(
-                    "*Ranked by transaction amount. "
-                    "Charges marked 🔁 also appear as recurring charges.*"
-                )
+                gr.HTML(_SECTION_NOTE.format(
+                    "Ranked by transaction amount. Charges marked 🔁 also appear as recurring charges."
+                ))
                 top13_table = gr.DataFrame(wrap=True, visible=False)
                 top13_footer_md = gr.Markdown()
 
             with gr.Tab("🔁 Recurring Charges"):
                 gr.Markdown("#### 🔁 Recurring Charges — True Annual Cost")
-                gr.Markdown(
-                    "*These charges appear on a regular schedule. "
-                    "The annual cost column shows what you're actually paying per year — "
-                    "a number most people have never seen laid out clearly.*"
-                )
+                gr.HTML(_SECTION_NOTE.format(
+                    "These charges appear on a regular schedule. The annual cost column shows what you're "
+                    "actually paying per year — a number most people have never seen laid out clearly."
+                ))
                 recurring_table = gr.DataFrame(wrap=True, visible=False)
                 recurring_footer_md = gr.Markdown()
 
             with gr.Tab("📋 Possible Subscriptions"):
                 gr.Markdown("#### 📋 Possible Forgotten Subscriptions")
-                gr.Markdown(
-                    "*Small, consistent charges that are easy to forget about. "
+                gr.HTML(_SECTION_NOTE.format(
+                    "Small, consistent charges that are easy to forget about. "
                     "Sorted by forgettability — the ones most likely to be autopilot spending. "
-                    "Could you cancel any of these?*"
-                )
+                    "Could you cancel any of these?"
+                ))
                 subs_table = gr.DataFrame(wrap=True, visible=False)
                 subs_footer_md = gr.Markdown()
 
@@ -343,31 +408,22 @@ Upload your credit card statements and uncover what your spending is really tell
                 gr.Markdown("#### 📈 Year-over-Year Spending Changes")
                 yoy_status_md = gr.Markdown()
                 gr.Markdown("##### ↑ Charges That Increased")
-                gr.Markdown("*These cost you more this year than last year.*")
+                gr.HTML(_SECTION_NOTE.format("These cost you more this year than last year."))
                 yoy_inc_table = gr.DataFrame(wrap=True, visible=False)
                 gr.Markdown("##### ↓ Charges That Decreased")
-                gr.Markdown("*You spent less here — cancellations, negotiated rates, or reduced usage.*")
+                gr.HTML(_SECTION_NOTE.format(
+                    "You spent less here — cancellations, negotiated rates, or reduced usage."
+                ))
                 yoy_dec_table = gr.DataFrame(wrap=True, visible=False)
 
             with gr.Tab("🔍 AI Insights"):
                 gr.Markdown("#### 🔍 AI Insights")
-                gr.Markdown(
-                    "*The AI analyzes your aggregated spending data — not your raw transactions. "
+                gr.HTML(_SECTION_NOTE.format(
+                    "The AI analyzes your aggregated spending data — not your raw transactions. "
                     "Merchant names and totals are shared with the provider you select; "
-                    "no account numbers, card numbers, or personal details are ever sent.*"
-                )
-                with gr.Row():
-                    provider_dd = gr.Dropdown(
-                        choices=["OpenAI (GPT-4o)", "Google Gemini", "Anthropic Claude"],
-                        value="Anthropic Claude",
-                        label="AI Provider",
-                    )
-                    api_key_tb = gr.Textbox(
-                        type="password",
-                        label="API Key",
-                        placeholder="Paste your key here...",
-                        info="Used only this session. Never stored or shared.",
-                    )
+                    "no account numbers, card numbers, or personal details are ever sent."
+                ))
+                gr.Markdown("*Provider and API key are configured in the **AI Provider** section above.*")
                 depth_radio = gr.Radio(
                     choices=["Summary bullets", "Deep narrative analysis"],
                     value="Summary bullets",
@@ -384,7 +440,7 @@ Upload your credit card statements and uncover what your spending is really tell
 
     analyze_outputs = [
         results_col, st_df, st_summary, st_llm,
-        warnings_md, quality_md, stats_md,
+        warnings_md, quality_html, stats_html,
         top13_table, top13_footer_md,
         recurring_table, recurring_footer_md,
         subs_table, subs_footer_md,
